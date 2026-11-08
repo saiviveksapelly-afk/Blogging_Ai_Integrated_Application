@@ -1,0 +1,9 @@
+node_modules/
+**/node_modules/
+client/.next/
+client/out/
+server/uploads/
+.env
+.env.*
+!.env.example
+*.log
