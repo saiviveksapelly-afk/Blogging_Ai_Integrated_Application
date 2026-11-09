@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CURRENT_USER_STORAGE_KEY, DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, HISTORY_STORAGE_KEY, readCurrentUser, readPosts, writePosts, type CurrentUser } from "./data";
+import { CURRENT_USER_STORAGE_KEY, DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, readCurrentUser, type CurrentUser } from "./data";
 import { UserAvatar } from "./UserAvatar";
 import { useRequireAuth } from "./useRequireAuth";
+import { getReadingHistory } from "./api";
 
 function Icon({ name }: { name: "menu" | "plus" | "clock" | "close" | "search" | "home" | "book" }) {
   const common = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
@@ -54,7 +55,7 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
   }, []);
 
   async function logout() {
-    if (currentUser && currentUser.id !== DEMO_USER_ID) {
+    if (currentUser) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
       try { await fetch(`${apiUrl}/api/auth/logout`, { method: "POST", credentials: "include" }); } catch { /* Clear the local session even if offline. */ }
     }
@@ -64,28 +65,13 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
   }
 
   async function deleteAccount() {
-    if (!currentUser || !window.confirm("Delete your account permanently? Your account and your locally saved blogs and comments will be removed.")) return;
+    if (!currentUser || !window.confirm("Delete your account permanently? Your account and its blogs, comments, likes, and reading history will be removed.")) return;
     const ownerId = currentUser.id;
-    if (ownerId !== DEMO_USER_ID) {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-      try {
-        const response = await fetch(`${apiUrl}/api/auth/me`, { method: "DELETE", credentials: "include" });
-        if (!response.ok) { window.alert("Your account could not be deleted. Please try again."); return; }
-      } catch { window.alert("Your account could not be deleted while offline."); return; }
-    }
-    const ownedPostIds = new Set(readPosts().filter((post) => post.ownerId === ownerId).map((post) => post.id));
-    const posts = readPosts().filter((post) => post.ownerId !== ownerId).map((post) => ({
-      ...post,
-      comments: post.comments.filter((comment) => comment.userId !== ownerId).map((comment) => ({
-        ...comment,
-        replies: (comment.replies ?? []).filter((reply) => reply.userId !== ownerId),
-      })),
-    }));
-    writePosts(posts);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
     try {
-      const history = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]") as { id: string }[];
-      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.filter((entry) => !ownedPostIds.has(entry.id))));
-    } catch { window.localStorage.removeItem(HISTORY_STORAGE_KEY); }
+      const response = await fetch(`${apiUrl}/api/auth/me`, { method: "DELETE", credentials: "include" });
+      if (!response.ok) { window.alert("Your account could not be deleted. Please try again."); return; }
+    } catch { window.alert("Your account could not be deleted while offline."); return; }
     window.localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
     if (ownerId === DEMO_USER_ID) window.localStorage.removeItem(DEMO_PASSWORD_STORAGE_KEY);
     setCurrentUser(null); setAccountOpen(false); router.replace("/login");
@@ -99,9 +85,9 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
     }
   }
 
-  function toggleHistory() {
+  async function toggleHistory() {
     if (!historyOpen) {
-      try { setHistory(JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]")); } catch { setHistory([]); }
+      try { setHistory(await getReadingHistory()); } catch { setHistory([]); }
     }
     setHistoryOpen(!historyOpen);
   }

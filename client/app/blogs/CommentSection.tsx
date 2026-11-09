@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { UserAvatar } from "./UserAvatar";
 import type { BlogPost, CurrentUser } from "./data";
+import { addPostComment, addPostReply, editPostComment, editPostReply, removePostComment, removePostReply } from "./api";
 
 export function CommentSection({ post, currentUser, onChange }: { post: BlogPost; currentUser: CurrentUser | null; onChange: (post: BlogPost) => void }) {
   const [commentText, setCommentText] = useState("");
@@ -14,52 +15,53 @@ export function CommentSection({ post, currentUser, onChange }: { post: BlogPost
   const [editingReply, setEditingReply] = useState<{ comment: number; reply: number } | null>(null);
   const [editingReplyText, setEditingReplyText] = useState("");
 
-  function saveComments(comments: BlogPost["comments"]) {
-    onChange({ ...post, comments });
+  function applyServerResult(request: Promise<{ post: BlogPost }>) {
+    void request.then(({ post: updated }) => onChange(updated)).catch((error) => window.alert(error instanceof Error ? error.message : "Could not save that change."));
   }
 
   function addComment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!currentUser || !commentText.trim()) return;
-    saveComments([...post.comments, { author: currentUser.name, userId: currentUser.id, avatarURL: currentUser.avatarURL, text: commentText.trim(), date: "Just now", replies: [] }]);
+    applyServerResult(addPostComment(post.id, commentText.trim()));
     setCommentText("");
   }
 
   function addReply(event: FormEvent<HTMLFormElement>, commentIndex: number) {
     event.preventDefault();
     if (!currentUser || !replyText.trim()) return;
-    saveComments(post.comments.map((comment, index) => index === commentIndex
-      ? { ...comment, replies: [...(comment.replies ?? []), { author: currentUser.name, userId: currentUser.id, avatarURL: currentUser.avatarURL, text: replyText.trim(), date: "Just now" }] }
-      : comment));
+    const comment = post.comments[commentIndex];
+    if (!comment?.id) return;
+    applyServerResult(addPostReply(post.id, comment.id, replyText.trim()));
     setReplyText(""); setReplyingTo(null);
   }
 
   function saveCommentEdit(event: FormEvent<HTMLFormElement>, commentIndex: number) {
     event.preventDefault();
     if (!editingCommentText.trim()) return;
-    saveComments(post.comments.map((comment, index) => index === commentIndex ? { ...comment, text: editingCommentText.trim() } : comment));
+    const comment = post.comments[commentIndex];
+    if (!comment?.id) return;
+    applyServerResult(editPostComment(post.id, comment.id, editingCommentText.trim()));
     setEditingComment(null); setEditingCommentText("");
   }
 
   function deleteComment(commentIndex: number) {
     if (!window.confirm("Delete this comment and its replies?")) return;
-    saveComments(post.comments.filter((_, index) => index !== commentIndex));
+    const comment = post.comments[commentIndex];
+    if (comment?.id) applyServerResult(removePostComment(post.id, comment.id));
   }
 
   function saveReplyEdit(event: FormEvent<HTMLFormElement>, commentIndex: number, replyIndex: number) {
     event.preventDefault();
     if (!editingReplyText.trim()) return;
-    const comments = post.comments.map((comment, index) => index === commentIndex
-      ? { ...comment, replies: (comment.replies ?? []).map((reply, position) => position === replyIndex ? { ...reply, text: editingReplyText.trim() } : reply) }
-      : comment);
-    saveComments(comments); setEditingReply(null); setEditingReplyText("");
+    const comment = post.comments[commentIndex]; const reply = comment?.replies?.[replyIndex];
+    if (!comment?.id || !reply?.id) return;
+    applyServerResult(editPostReply(post.id, comment.id, reply.id, editingReplyText.trim())); setEditingReply(null); setEditingReplyText("");
   }
 
   function deleteReply(commentIndex: number, replyIndex: number) {
     if (!window.confirm("Delete this reply?")) return;
-    saveComments(post.comments.map((comment, index) => index === commentIndex
-      ? { ...comment, replies: (comment.replies ?? []).filter((_, position) => position !== replyIndex) }
-      : comment));
+    const comment = post.comments[commentIndex]; const reply = comment?.replies?.[replyIndex];
+    if (comment?.id && reply?.id) applyServerResult(removePostReply(post.id, comment.id, reply.id));
   }
 
   return <section className="mx-auto mt-12 max-w-3xl">

@@ -53,11 +53,20 @@ export default function LoginPage() {
       payload.email.trim().toLowerCase() === "demo@example.com" &&
       payload.password === readDemoPassword()
     ) {
-      const savedDemoUser = readCurrentUser();
-      saveCurrentUser(savedDemoUser?.id === DEMO_USER_ID ? savedDemoUser : { id: DEMO_USER_ID, name: "Demo reader", email: "demo@example.com" });
-      setIsSubmitting(false);
-      clearLoginForm();
-      router.replace("/blogs");
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+        const response = await fetch(`${apiUrl}/api/auth/demo`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(payload) });
+        const data = (await response.json()) as LoginResponse;
+        if (!response.ok || !data.user) { setMessage(data.message ?? "Demo login failed."); return; }
+        const savedDemoUser = readCurrentUser();
+        saveCurrentUser({ id: DEMO_USER_ID, name: data.user.username, email: data.user.email, avatarURL: savedDemoUser?.id === DEMO_USER_ID ? savedDemoUser.avatarURL : undefined });
+        clearLoginForm();
+        router.replace("/blogs");
+      } catch {
+        setMessage("Could not connect to the server. Check that the backend is running.");
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 

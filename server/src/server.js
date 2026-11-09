@@ -6,8 +6,11 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import { connectDB } from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
 
 const app = express();
+app.set("trust proxy", 1);
 const port = process.env.PORT || 5000;
 const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
 const sessionSecret = process.env.SESSION_SECRET;
@@ -24,7 +27,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "15mb" }));
 
 app.use(
   session({
@@ -40,7 +43,7 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }),
@@ -51,6 +54,8 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/blogs", blogRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use("/api", (_req, res) => {
   res.status(404).json({ message: "API route not found." });

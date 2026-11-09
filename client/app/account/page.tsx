@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, readCurrentUser, readPosts, saveCurrentUser, type CurrentUser } from "../blogs/data";
+import { DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, readCurrentUser, saveCurrentUser, type BlogPost, type CurrentUser } from "../blogs/data";
 import { UserAvatar } from "../blogs/UserAvatar";
 import { useRequireAuth } from "../blogs/useRequireAuth";
+import { getMyPosts, getPosts } from "../blogs/api";
 
 type ProfileResponse = { message?: string; user?: { id: string; username: string; email?: string; avatarURL?: string } };
 type AccountActivity = { postId: string; postTitle: string; text: string; date: string; kind: "comment" | "reply" };
@@ -42,7 +43,7 @@ export default function AccountPage() {
   const [name, setName] = useState("");
   const [avatarURL, setAvatarURL] = useState("");
   const [email, setEmail] = useState("");
-  const [authoredBlogs, setAuthoredBlogs] = useState<ReturnType<typeof readPosts>>([]);
+  const [authoredBlogs, setAuthoredBlogs] = useState<BlogPost[]>([]);
   const [authoredComments, setAuthoredComments] = useState<AccountActivity[]>([]);
   const [profileMessage, setProfileMessage] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
@@ -59,12 +60,13 @@ export default function AccountPage() {
       const accountEmail = savedUser?.email ?? (savedUser?.id === DEMO_USER_ID ? "demo@example.com" : "");
       setUser(savedUser ? { ...savedUser, email: accountEmail, avatarURL: customAvatar(savedUser.avatarURL) } : null); setName(savedUser?.name ?? ""); setEmail(accountEmail); setAvatarURL(customAvatar(savedUser?.avatarURL) ?? ""); setIdentityLoaded(true);
       if (savedUser) {
-        const posts = readPosts();
-        setAuthoredBlogs(posts.filter((post) => post.ownerId === savedUser.id));
-        setAuthoredComments(posts.flatMap((post) => post.comments.flatMap((comment) => [
-          ...(comment.userId === savedUser.id ? [{ postId: post.id, postTitle: post.title, text: comment.text, date: comment.date, kind: "comment" as const }] : []),
-          ...(comment.replies ?? []).filter((reply) => reply.userId === savedUser.id).map((reply) => ({ postId: post.id, postTitle: post.title, text: reply.text, date: reply.date, kind: "reply" as const })),
-        ])));
+        void Promise.all([getMyPosts(), getPosts()]).then(([posts, allPosts]) => {
+          setAuthoredBlogs(posts);
+          setAuthoredComments(allPosts.flatMap((post) => post.comments.flatMap((comment) => [
+            ...(comment.userId === savedUser.id ? [{ postId: post.id, postTitle: post.title, text: comment.text, date: comment.date, kind: "comment" as const }] : []),
+            ...(comment.replies ?? []).filter((reply) => reply.userId === savedUser.id).map((reply) => ({ postId: post.id, postTitle: post.title, text: reply.text, date: reply.date, kind: "reply" as const })),
+          ])));
+        }).catch(() => { setAuthoredBlogs([]); setAuthoredComments([]); });
       }
       if (savedUser && savedUser.id !== DEMO_USER_ID) {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
@@ -85,19 +87,14 @@ export default function AccountPage() {
     event.preventDefault(); if (!user) return;
     setSavingProfile(true); setProfileMessage("");
     try {
-      let updatedUser: CurrentUser;
-      if (user.id === DEMO_USER_ID) {
-        updatedUser = { ...user, name: name.trim(), avatarURL: avatarURL || undefined };
-      } else {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-        const response = await fetch(`${apiUrl}/api/auth/me/profile`, {
-          method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
-          body: JSON.stringify({ username: name.trim(), avatarURL: avatarURL || null }),
-        });
-        const data = await response.json() as ProfileResponse;
-        if (!response.ok || !data.user) throw new Error(data.message ?? "Could not update your profile.");
-        updatedUser = { id: data.user.id, name: data.user.username, email: data.user.email ?? email, avatarURL: customAvatar(data.user.avatarURL) };
-      }
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+      const response = await fetch(`${apiUrl}/api/auth/me/profile`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ username: name.trim(), avatarURL: avatarURL || null }),
+      });
+      const data = await response.json() as ProfileResponse;
+      if (!response.ok || !data.user) throw new Error(data.message ?? "Could not update your profile.");
+      const updatedUser: CurrentUser = { id: data.user.id, name: data.user.username, email: data.user.email ?? email, avatarURL: customAvatar(data.user.avatarURL) };
       setUser(updatedUser); setName(updatedUser.name); setAvatarURL(updatedUser.avatarURL ?? ""); saveCurrentUser(updatedUser);
       setProfileMessage("Your profile was updated.");
     } catch (error) {

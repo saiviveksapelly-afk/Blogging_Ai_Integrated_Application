@@ -13,17 +13,19 @@ export type BlogPost = {
   coverPosition?: { x: number; y: number };
   accent: string;
   likes: number;
+  liked?: boolean;
   comments: BlogComment[];
   updatedAt?: string;
 };
 
 export type BlogComment = {
+  id?: string;
   author: string;
   userId?: string;
   avatarURL?: string;
   text: string;
   date: string;
-  replies?: { author: string; userId?: string; avatarURL?: string; text: string; date: string }[];
+  replies?: { id?: string; author: string; userId?: string; avatarURL?: string; text: string; date: string }[];
 };
 
 export const demoPosts: BlogPost[] = [
@@ -62,8 +64,8 @@ export const demoPosts: BlogPost[] = [
 export const DEMO_USER_ID = "demo-account";
 export const CURRENT_USER_STORAGE_KEY = "blog.current.user.v1";
 export const DEMO_PASSWORD_STORAGE_KEY = "blog.demo.password.v1";
-export const POSTS_STORAGE_KEY = "blog.demo.posts.v1";
-export const HISTORY_STORAGE_KEY = "blog.demo.history.v1";
+export const LEGACY_POSTS_STORAGE_KEY = "blog.demo.posts.v1";
+export const LEGACY_HISTORY_STORAGE_KEY = "blog.demo.history.v1";
 
 export type CurrentUser = { id: string; name: string; email?: string; avatarURL?: string };
 
@@ -83,56 +85,4 @@ export function saveCurrentUser(user: CurrentUser) {
 
 export function readDemoPassword() {
   return window.localStorage.getItem(DEMO_PASSWORD_STORAGE_KEY) ?? "demopassword";
-}
-
-export function readPosts(): BlogPost[] {
-  if (typeof window === "undefined") return demoPosts;
-  try {
-    const saved = window.localStorage.getItem(POSTS_STORAGE_KEY);
-    if (!saved) return demoPosts;
-    const posts = JSON.parse(saved) as BlogPost[];
-    // Posts created by the previous demo version used "You" as their owner label.
-    return posts.map((post) => ({
-      ...post,
-      ...(post.author === "You" && !post.ownerId ? { author: "Demo reader", ownerId: DEMO_USER_ID } : {}),
-      comments: (post.comments ?? []).map((comment) => ({
-        ...comment,
-        ...(comment.author === "You" && !comment.userId ? { author: "Demo reader", userId: DEMO_USER_ID } : {}),
-        replies: (comment.replies ?? []).map((reply) => reply.author === "You" && !reply.userId
-          ? { ...reply, author: "Demo reader", userId: DEMO_USER_ID }
-          : reply),
-      })),
-    }));
-  } catch {
-    return demoPosts;
-  }
-}
-
-export function writePosts(posts: BlogPost[]) {
-  window.localStorage.setItem(POSTS_STORAGE_KEY, JSON.stringify(posts));
-}
-
-export function deleteOwnedPost(postId: string, ownerId: string) {
-  const posts = readPosts();
-  const target = posts.find((post) => post.id === postId);
-  if (!target || target.ownerId !== ownerId) return null;
-  const remaining = posts.filter((post) => post.id !== postId);
-  writePosts(remaining);
-  try {
-    const history = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]") as { id: string }[];
-    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history.filter((entry) => entry.id !== postId)));
-  } catch {
-    window.localStorage.removeItem(HISTORY_STORAGE_KEY);
-  }
-  return remaining;
-}
-
-export function recordVisit(post: BlogPost) {
-  try {
-    const history = JSON.parse(window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]") as { id: string; title: string; at: string }[];
-    const next = [{ id: post.id, title: post.title, at: new Date().toISOString() }, ...history.filter((entry) => entry.id !== post.id)].slice(0, 8);
-    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([{ id: post.id, title: post.title, at: new Date().toISOString() }]));
-  }
 }

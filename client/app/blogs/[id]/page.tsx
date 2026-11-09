@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useEffect, useRef, useState } from "react";
 import { BlogShell } from "../BlogShell";
-import { deleteOwnedPost, demoPosts, readCurrentUser, readPosts, writePosts, recordVisit, type BlogPost, type CurrentUser } from "../data";
+import { demoPosts, readCurrentUser, type BlogPost, type CurrentUser } from "../data";
+import { deletePost as deletePostApi, getPost, recordPostVisit, togglePostLike } from "../api";
 import { UserAvatar } from "../UserAvatar";
 import { CommentSection } from "../CommentSection";
 
@@ -21,14 +22,12 @@ function BlogDetailContent() {
     const timer = window.setTimeout(() => {
       const user = readCurrentUser();
       setCurrentUser(user);
-      const stored = readPosts(); setPosts(stored);
-      try {
-        const isLiked = (JSON.parse(window.localStorage.getItem(`blog.likes.${user?.id ?? "guest"}.v1`) ?? "[]") as string[]).includes(id);
-        likedRef.current = isLiked;
-        setLiked(isLiked);
-      } catch { likedRef.current = false; setLiked(false); }
-      const viewed = stored.find((post) => post.id === id);
-      if (viewed) recordVisit(viewed);
+      void getPost(id).then((viewed) => {
+        setPosts([viewed]);
+        likedRef.current = Boolean(viewed.liked);
+        setLiked(Boolean(viewed.liked));
+        void recordPostVisit(id).catch(() => undefined);
+      }).catch(() => setPosts([]));
     }, 0);
     return () => window.clearTimeout(timer);
   }, [id]);
@@ -37,32 +36,28 @@ function BlogDetailContent() {
   if (!post) return <BlogShell><div className="py-24 text-center"><h1 className="font-serif text-3xl">This story has wandered off.</h1><Link className="mt-4 inline-block text-sm text-[#a9664c] underline" href="/blogs">Back to explore</Link></div></BlogShell>;
 
   const updatePost = (next: BlogPost) => {
-    const nextPosts = posts.map((item) => item.id === next.id ? next : item);
-    setPosts(nextPosts); writePosts(nextPosts);
+    setPosts((current) => current.map((item) => item.id === next.id ? next : item));
   };
 
   const deletePost = () => {
     if (!currentUser || currentUser.id !== post.ownerId) return;
     if (!window.confirm("Delete this blog? This also removes its comments and replies.")) return;
-    const remaining = deleteOwnedPost(post.id, currentUser.id);
-    if (!remaining) return;
-    setPosts(remaining);
-    router.replace("/blogs/yours");
+    void deletePostApi(post.id).then(() => router.replace("/blogs/yours")).catch((error) => window.alert(error instanceof Error ? error.message : "Could not delete this blog."));
   };
 
   const toggleLike = () => {
     const nextLiked = !likedRef.current;
     likedRef.current = nextLiked;
     setLiked(nextLiked);
-    const likesKey = `blog.likes.${currentUser?.id ?? "guest"}.v1`;
-    let counts: string[] = [];
-    try { counts = JSON.parse(window.localStorage.getItem(likesKey) ?? "[]") as string[]; } catch { /* Start with an empty like list if local data is damaged. */ }
-    const nextCounts = nextLiked ? Array.from(new Set([...counts, id])) : counts.filter((likedId) => likedId !== id);
-    window.localStorage.setItem(likesKey, JSON.stringify(nextCounts));
-    const latestPost = readPosts().find((item) => item.id === id) ?? post;
-    const nextPosts = readPosts().map((item) => item.id === id ? { ...item, likes: Math.max(0, latestPost.likes + (nextLiked ? 1 : -1)) } : item);
-    setPosts(nextPosts);
-    writePosts(nextPosts);
+    void togglePostLike(id, nextLiked).then((result) => {
+      setPosts((current) => current.map((item) => item.id === id ? { ...item, liked: result.liked, likes: result.likes } : item));
+      likedRef.current = result.liked;
+      setLiked(result.liked);
+    }).catch((error) => {
+      likedRef.current = liked;
+      setLiked(liked);
+      window.alert(error instanceof Error ? error.message : "Could not save your appreciation.");
+    });
   };
 
   const isAuthor = Boolean(currentUser && currentUser.id === post.ownerId);

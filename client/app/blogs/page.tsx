@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BlogShell } from "./BlogShell";
-import { demoPosts, readCurrentUser, readPosts, type BlogPost, type CurrentUser } from "./data";
+import { demoPosts, readCurrentUser, type BlogPost, type CurrentUser } from "./data";
+import { getPosts } from "./api";
 
 function HighlightedText({ text, term }: { text: string; term: string }) {
   if (!term) return <>{text}</>;
@@ -23,8 +24,8 @@ export default function ExplorePage() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setPosts(readPosts());
       setCurrentUser(readCurrentUser());
+      void getPosts().then(setPosts).catch(() => setPosts(demoPosts));
       const tag = new URLSearchParams(window.location.search).get("tag");
       if (tag) setActiveTag(tag);
       const initialQuery = new URLSearchParams(window.location.search).get("q");
