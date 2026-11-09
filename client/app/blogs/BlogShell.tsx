@@ -6,7 +6,8 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CURRENT_USER_STORAGE_KEY, DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, readCurrentUser, type CurrentUser } from "./data";
 import { UserAvatar } from "./UserAvatar";
-import { AuthTransition, clearAuthCache, useRequireAuth } from "./useRequireAuth";
+import { AuthTransition } from "./AuthTransition";
+import { clearAuthCache, useRequireAuth } from "./useRequireAuth";
 import { getReadingHistory } from "./api";
 
 function Icon({ name }: { name: "menu" | "plus" | "clock" | "close" | "search" | "home" | "book" }) {
@@ -94,7 +95,7 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
     setHistoryOpen(!historyOpen);
   }
 
-  if (authState !== "authorized") return <AuthTransition redirecting={authState === "redirecting"} />;
+  if (authState !== "authorized") return <AuthTransition />;
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] text-[#24241f]">
