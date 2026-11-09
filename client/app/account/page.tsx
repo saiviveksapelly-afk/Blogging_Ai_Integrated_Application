@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, readCurrentUser, saveCurrentUser, type BlogPost, type CurrentUser } from "../blogs/data";
 import { UserAvatar } from "../blogs/UserAvatar";
-import { useRequireAuth } from "../blogs/useRequireAuth";
+import { AuthTransition, useRequireAuth } from "../blogs/useRequireAuth";
 import { getMyPosts, getPosts } from "../blogs/api";
 
 type ProfileResponse = { message?: string; user?: { id: string; username: string; email?: string; avatarURL?: string } };
@@ -37,7 +37,7 @@ function resizeAvatar(file: File): Promise<string> {
 }
 
 export default function AccountPage() {
-  const authorized = useRequireAuth();
+  const authState = useRequireAuth();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [identityLoaded, setIdentityLoaded] = useState(false);
   const [name, setName] = useState("");
@@ -127,7 +127,7 @@ export default function AccountPage() {
     } finally { setSavingPassword(false); }
   }
 
-  if (!authorized) return <main className="grid min-h-screen place-items-center bg-[#f7f6f2] text-sm text-zinc-500">Redirecting to login…</main>;
+  if (authState !== "authorized") return <AuthTransition redirecting={authState === "redirecting"} />;
   if (!identityLoaded) return <main className="grid min-h-screen place-items-center bg-[#f7f6f2] text-sm text-zinc-500">Loading account…</main>;
   if (!user) return <main className="grid min-h-screen place-items-center bg-[#f7f6f2] px-5"><section className="max-w-md rounded-3xl bg-white p-8 text-center"><h1 className="font-serif text-3xl">Log in to your account</h1><p className="mt-3 text-sm text-zinc-500">Your account settings are private to you.</p><Link href="/login" className="mt-6 inline-flex rounded-full bg-[#30342e] px-5 py-3 text-sm text-white">Go to login</Link></section></main>;
 

@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CURRENT_USER_STORAGE_KEY, DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, readCurrentUser, type CurrentUser } from "./data";
 import { UserAvatar } from "./UserAvatar";
-import { useRequireAuth } from "./useRequireAuth";
+import { AuthTransition, clearAuthCache, useRequireAuth } from "./useRequireAuth";
 import { getReadingHistory } from "./api";
 
 function Icon({ name }: { name: "menu" | "plus" | "clock" | "close" | "search" | "home" | "book" }) {
@@ -23,7 +23,7 @@ function Icon({ name }: { name: "menu" | "plus" | "clock" | "close" | "search" |
 
 export function BlogShell({ children, onSearch, searchValue = "" }: { children: ReactNode; onSearch?: (value: string) => void; searchValue?: string }) {
   const router = useRouter();
-  const authorized = useRequireAuth();
+  const authState = useRequireAuth();
   const [expanded, setExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
@@ -60,6 +60,7 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
       try { await fetch(`${apiUrl}/api/auth/logout`, { method: "POST", credentials: "include" }); } catch { /* Clear the local session even if offline. */ }
     }
     window.localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+    clearAuthCache();
     setAccountOpen(false);
     router.replace("/login");
   }
@@ -73,6 +74,7 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
       if (!response.ok) { window.alert("Your account could not be deleted. Please try again."); return; }
     } catch { window.alert("Your account could not be deleted while offline."); return; }
     window.localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+    clearAuthCache();
     if (ownerId === DEMO_USER_ID) window.localStorage.removeItem(DEMO_PASSWORD_STORAGE_KEY);
     setCurrentUser(null); setAccountOpen(false); router.replace("/login");
   }
@@ -92,7 +94,7 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
     setHistoryOpen(!historyOpen);
   }
 
-  if (!authorized) return <main className="min-h-screen bg-[#f7f6f2] px-5 py-20 text-center text-sm text-zinc-500">Redirecting to login…</main>;
+  if (authState !== "authorized") return <AuthTransition redirecting={authState === "redirecting"} />;
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] text-[#24241f]">
