@@ -1,0 +1,90 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e175]:
+    - complementary [ref=f1e176]:
+      - button "Expand menu" [ref=f1e178]
+      - navigation [ref=f1e181]:
+        - link "Explore" [ref=f1e182] [cursor=pointer]:
+          - /url: /blogs
+        - link "Your Blogs" [ref=f1e185] [cursor=pointer]:
+          - /url: /blogs/yours
+        - link "Write a blog" [ref=f1e189] [cursor=pointer]:
+          - /url: /blogs/create
+        - button "Search blogs" [ref=f1e192]
+        - button "Reading history" [ref=f1e196]
+      - img "Demo reader's avatar" [ref=f1e202]
+    - generic [ref=f1e203]:
+      - banner [ref=f1e204]:
+        - generic [ref=f1e206]:
+          - link "Blog." [ref=f1e207] [cursor=pointer]:
+            - /url: /blogs
+          - generic [ref=f1e208]:
+            - generic [ref=f1e209]: Reader's club
+            - generic [ref=f1e210]: Good stories, shared slowly
+      - main [ref=f1e211]:
+        - generic [ref=f1e212]:
+          - link "← Back" [ref=f1e213] [cursor=pointer]:
+            - /url: /blogs/story-1794221169504
+            - text: ←
+            - generic [ref=f1e214]: Back
+          - paragraph [ref=f1e215]: Your story, in progress
+          - heading "Edit your blog" [level=1] [ref=f1e216]
+          - paragraph [ref=f1e217]: Write freely. Your story will be saved in this browser for the demo.
+          - generic [ref=f1e218]:
+            - generic [ref=f1e219]:
+              - generic [ref=f1e220]: Title
+              - textbox "Title" [ref=f1e221]:
+                - /placeholder: Give your story a name
+                - text: Editor regression check
+            - generic [ref=f1e222]:
+              - generic [ref=f1e223]: Cover image
+              - generic [ref=f1e224] [cursor=pointer]:
+                - generic [ref=f1e225]: Hero preview · click to change
+                - button "Hero preview · click to change" [ref=f1e226]
+              - paragraph [ref=f1e227]: Adjust the crop below; this preview matches the hero image on your published story.
+              - generic [ref=f1e228]:
+                - text: Zoom
+                - slider "Zoom 115%" [ref=f1e229]: "115"
+                - generic [ref=f1e230]: 115%
+              - generic [ref=f1e231]:
+                - text: Horizontal crop
+                - slider "Horizontal crop 50%" [ref=f1e232]: "50"
+                - generic [ref=f1e233]: 50%
+              - generic [ref=f1e234]:
+                - text: Vertical crop
+                - slider "Vertical crop 50%" [ref=f1e235]: "50"
+                - generic [ref=f1e236]: 50%
+              - generic [ref=f1e237]:
+                - generic [ref=f1e238]: or image URL
+                - textbox "Cover image URL" [ref=f1e239]:
+                  - /placeholder: https://…
+                  - text: /blog-covers/writing.svg
+              - paragraph [ref=f1e240]: Add a cover image, paste an image URL, or upload it from your device.
+            - generic [ref=f1e241]:
+              - generic [ref=f1e242]:
+                - button "B" [ref=f1e243]
+                - button "I" [ref=f1e244]
+                - button "H2" [ref=f1e246]
+                - button "＋ Image" [ref=f1e247]
+                - generic [ref=f1e248]:
+                  - text: Selected image width
+                  - slider "Selected image width 48%" [ref=f1e249]: "50"
+                  - generic [ref=f1e250]: 48%
+                - generic [ref=f1e251]: Click an image to select it · text wraps beside images
+              - textbox "Blog body" [ref=f1e252]
+            - generic [ref=f1e253]:
+              - generic [ref=f1e254]: Hashtags
+              - 'textbox "Hashtags Separate topics with commas. We''ll add the # for you." [ref=f1e255]':
+                - /placeholder: mindfulness, writing, travel
+                - text: testing
+              - generic [ref=f1e256]: "Separate topics with commas. We'll add the # for you."
+            - generic [ref=f1e257]:
+              - paragraph [ref=f1e258]:
+                - text: Published as
+                - strong [ref=f1e259]: Demo reader
+              - generic [ref=f1e260]:
+                - link "Cancel" [ref=f1e261] [cursor=pointer]:
+                  - /url: /blogs/story-1794221169504
+                - button "Save changes & publish" [ref=f1e262]
+          - paragraph [ref=f1e263]: Demo content is saved only in this browser. Clearing site data removes your edits.
+  - button "Open Next.js Dev Tools" [ref=f1e98] [cursor=pointer]
+  - alert [ref=f1e102]: Blog — stories worth sharing

@@ -1,0 +1,65 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e103]:
+    - complementary [ref=f1e104]:
+      - button "Expand menu" [ref=f1e106]
+      - navigation [ref=f1e109]:
+        - link "Explore" [ref=f1e110] [cursor=pointer]:
+          - /url: /blogs
+        - link "Your Blogs" [ref=f1e113] [cursor=pointer]:
+          - /url: /blogs/yours
+        - link "Write a blog" [ref=f1e117] [cursor=pointer]:
+          - /url: /blogs/create
+        - button "Search blogs" [ref=f1e120]
+        - button "Reading history" [ref=f1e124]
+      - img "Demo reader's avatar" [ref=f1e130]
+    - generic [ref=f1e131]:
+      - banner [ref=f1e132]:
+        - generic [ref=f1e134]:
+          - link "Blog." [ref=f1e135] [cursor=pointer]:
+            - /url: /blogs
+          - generic [ref=f1e136]:
+            - generic [ref=f1e137]: Reader's club
+            - generic [ref=f1e138]: Good stories, shared slowly
+      - main [ref=f1e139]:
+        - article [ref=f1e140]:
+          - link "← All stories" [ref=f1e141] [cursor=pointer]:
+            - /url: /blogs
+            - text: ←
+            - generic [ref=f1e142]: All stories
+          - link "#testing" [ref=f1e144] [cursor=pointer]:
+            - /url: /blogs?tag=testing
+          - heading "Editor regression check" [level=1] [ref=f1e145]
+          - paragraph [ref=f1e146]: Original story paragraph for editing.
+          - generic [ref=f1e147]:
+            - generic [ref=f1e148]:
+              - img "Demo reader's avatar" [ref=f1e149]
+              - generic [ref=f1e150]:
+                - paragraph [ref=f1e151]: Demo reader
+                - paragraph [ref=f1e152]: Nov 9, 2026 · 1 min read
+            - generic [ref=f1e153]:
+              - link "Edit your blog ↗" [ref=f1e154] [cursor=pointer]:
+                - /url: /blogs/story-1794221169504/edit
+              - button "Delete" [ref=f1e155]
+          - img "Cover image for Editor regression check" [ref=f1e156]
+          - generic [ref=f1e157]:
+            - generic [ref=f1e158]: Original story paragraph for editing.
+            - generic [ref=f1e159]:
+              - button "0 appreciations" [ref=f1e160]:
+                - generic [aria-hidden] [ref=f1e161]: ♡
+                - text: 0 appreciations
+              - generic [ref=f1e162]: A good story is better shared.
+          - generic [ref=f1e163]:
+            - generic [ref=f1e164]:
+              - paragraph [ref=f1e165]: The conversation
+              - heading "Responses (0)" [level=2] [ref=f1e166]:
+                - text: Responses
+                - generic [ref=f1e167]: (0)
+            - generic [ref=f1e168]:
+              - img "Demo reader's avatar" [ref=f1e169]
+              - generic [ref=f1e170]:
+                - generic [ref=f1e171]: Demo reader
+                - textbox "Demo reader" [ref=f1e172]:
+                  - /placeholder: Write a thoughtful comment…
+                - button "Post comment" [ref=f1e174]
+  - button "Open Next.js Dev Tools" [ref=f1e98] [cursor=pointer]
+  - alert [ref=f1e102]: This story has wandered off.

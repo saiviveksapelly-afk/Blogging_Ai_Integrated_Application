@@ -4,6 +4,7 @@ import { rateLimit } from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import BlogUser from "../models/User.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
 
@@ -36,6 +37,20 @@ const registerSchema = z
 const loginSchema = z.object({
   email: z.email().trim().toLowerCase(),
   password: passwordSchema,
+});
+
+const profileSchema = z
+  .object({
+    username: z.string().trim().toLowerCase().min(3).max(20).regex(/^[a-z0-9_]+$/, "Use letters, numbers, and underscores only.").optional(),
+    avatarURL: z.string().max(100_000).regex(/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/).nullable().optional(),
+  })
+  .refine((data) => data.username !== undefined || data.avatarURL !== undefined, {
+    message: "Add a name or avatar change.",
+  });
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string(),
+  newPassword: passwordSchema,
 });
 
 const registerLimiter = rateLimit({
@@ -209,6 +224,73 @@ router.get("/me", requireAuth, async (req, res, next) => {
         email: user.email,
         avatarURL: user.avatarURL,
       },
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.patch("/me/profile", requireAuth, async (req, res, next) => {
+  const result = profileSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json(validationResponse(result));
+
+  try {
+    const updates = {};
+    if (result.data.username !== undefined) updates.username = result.data.username;
+    if (result.data.avatarURL !== undefined) {
+      updates.avatarURL = result.data.avatarURL ?? "/avatars/default.svg";
+    }
+
+    const user = await BlogUser.findByIdAndUpdate(
+      req.session.userId,
+      { $set: updates },
+      { new: true, runValidators: true },
+    );
+    if (!user) return res.status(404).json({ message: "Account not found." });
+
+    return res.status(200).json({
+      message: "Profile updated.",
+      user: { id: user._id, username: user.username, email: user.email, avatarURL: user.avatarURL },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ field: "username", message: "That username is already taken." });
+    }
+    return next(error);
+  }
+});
+
+router.patch("/me/password", requireAuth, async (req, res, next) => {
+  const result = changePasswordSchema.safeParse(req.body);
+  if (!result.success) return res.status(400).json(validationResponse(result));
+
+  try {
+    const user = await BlogUser.findById(req.session.userId).select("+passwordHash");
+    if (!user) return res.status(404).json({ message: "Account not found." });
+
+    const matches = await bcrypt.compare(result.data.currentPassword, user.passwordHash);
+    if (!matches) return res.status(400).json({ message: "Current password is incorrect." });
+
+    user.passwordHash = await bcrypt.hash(result.data.newPassword, 12);
+    await user.save();
+    return res.status(200).json({ message: "Password updated." });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete("/me", requireAuth, async (req, res, next) => {
+  try {
+    await BlogUser.findByIdAndDelete(req.session.userId);
+    req.session.destroy((error) => {
+      if (error) return next(error);
+      res.clearCookie("blog.sid", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+      });
+      return res.status(204).end();
     });
   } catch (error) {
     return next(error);

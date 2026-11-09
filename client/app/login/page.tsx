@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DEMO_USER_ID, readCurrentUser, readDemoPassword, saveCurrentUser } from "../blogs/data";
 
 type LoginResponse = {
   message?: string;
+  user?: { id: string; username: string; email: string; avatarURL?: string };
   errors?: Array<{
     message: string;
   }>;
@@ -14,12 +17,22 @@ type LoginResponse = {
 export default function LoginPage() {
   const router = useRouter();
   const [message, setMessage] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function handleDemoLogin() {
+    setEmail("demo@example.com");
+    setPassword(readDemoPassword());
+    setIsSuccess(true);
+    setMessage("Demo credentials loaded successfully! click on submit");
+  }
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setMessage("");
+    setIsSuccess(false);
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
@@ -28,6 +41,16 @@ export default function LoginPage() {
       email: String(formData.get("email") ?? ""),
       password: String(formData.get("password") ?? ""),
     };
+
+    if (
+      payload.email.trim().toLowerCase() === "demo@example.com" &&
+      payload.password === readDemoPassword()
+    ) {
+      const savedDemoUser = readCurrentUser();
+      saveCurrentUser(savedDemoUser?.id === DEMO_USER_ID ? savedDemoUser : { id: DEMO_USER_ID, name: "Demo reader", email: "demo@example.com" });
+      router.replace("/blogs");
+      return;
+    }
 
     try {
       const apiUrl =
@@ -54,6 +77,13 @@ export default function LoginPage() {
         );
         return;
       }
+
+      if (!data.user?.id) {
+        setMessage("Login succeeded, but the server did not return your account details.");
+        return;
+      }
+
+      saveCurrentUser({ id: data.user.id, name: data.user.username, email: data.user.email, avatarURL: data.user.avatarURL });
 
       router.replace("/blogs");
     } catch {
@@ -89,6 +119,8 @@ export default function LoginPage() {
               name="email"
               type="email"
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
@@ -106,6 +138,8 @@ export default function LoginPage() {
               name="password"
               type="password"
               autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
@@ -117,10 +151,33 @@ export default function LoginPage() {
           >
             {isSubmitting ? "Logging in..." : "Log in"}
           </button>
+          <button
+            className="w-full rounded-md bg-zinc-700 px-4 py-2.5 font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleDemoLogin}
+          >
+            Load Demo Credentials
+          </button>
         </form>
 
+        <p className="mt-5 text-center text-sm text-zinc-600">
+          Don&apos;t have an account?{" "}
+          <Link
+            className="font-medium text-zinc-900 underline underline-offset-4"
+            href="/register"
+          >
+            Register
+          </Link>
+        </p>
+
         {message && (
-          <p className="mt-4 text-sm text-red-700" role="alert">
+          <p
+            className={`mt-4 text-sm ${
+              isSuccess ? "text-green-700" : "text-red-700"
+            }`}
+            role={isSuccess ? "status" : "alert"}
+          >
             {message}
           </p>
         )}

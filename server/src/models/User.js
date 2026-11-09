@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
     },
     avatarURL :{
         type:String,
-        default : '/avatars/default.png'
+        default : '/avatars/default.svg'
     },
 },{
     timestamps:true
