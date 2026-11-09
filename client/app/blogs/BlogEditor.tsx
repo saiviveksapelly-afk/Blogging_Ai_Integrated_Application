@@ -68,6 +68,7 @@ function sanitizeContent(html: string) {
 export function BlogEditor({ postId }: { postId?: string }) {
   const router = useRouter();
   const editor = useRef<HTMLDivElement>(null);
+  const publishingRef = useRef(false);
   const savedRange = useRef<Range | null>(null);
   const selectedImage = useRef<HTMLImageElement | null>(null);
   const pointerImageDrag = useRef<{ image: HTMLImageElement; pointerId: number; startX: number; startY: number; active: boolean } | null>(null);
@@ -83,6 +84,7 @@ export function BlogEditor({ postId }: { postId?: string }) {
   const [bodyImageScale, setBodyImageScale] = useState(48);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [identityLoaded, setIdentityLoaded] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -180,15 +182,20 @@ export function BlogEditor({ postId }: { postId?: string }) {
   }
 
   function publish() {
+    // A ref locks synchronously, before React has a chance to disable the button.
+    // This prevents two rapid clicks from opening two confirmations or writing two posts.
+    if (publishingRef.current) return;
+    publishingRef.current = true;
     if (!currentUser) { setNotice("Log in before publishing a story."); return; }
     const confirmation = existing
       ? "Save and publish these changes to your blog?"
       : "Publish this blog now? It will be visible to readers.";
-    if (!window.confirm(confirmation)) return;
+    if (!window.confirm(confirmation)) { publishingRef.current = false; return; }
     const editorText = editor.current?.innerText.trim() ?? "";
     const body = sanitizeContent(editor.current?.innerHTML ?? "");
-    if (!title.trim() || (!editorText && !/<img\b/i.test(body))) { setNotice("Add a title and some writing before you publish."); return; }
+    if (!title.trim() || (!editorText && !/<img\b/i.test(body))) { setNotice("Add a title and some writing before you publish."); publishingRef.current = false; return; }
     setNotice("");
+    setPublishing(true);
     const tags = Array.from(new Set(tagsText.split(",").map((tag) => tag.trim().replace(/^#/, "").toLowerCase()).filter(Boolean)));
     const publishedDate = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     const nextPost: BlogPost = {
@@ -203,6 +210,8 @@ export function BlogEditor({ postId }: { postId?: string }) {
       router.push(`/blogs/${nextPost.id}`);
     } catch {
       setNotice("This story could not be saved in this browser. Try removing a large image and publish again.");
+      publishingRef.current = false;
+      setPublishing(false);
     }
   }
 
@@ -224,7 +233,7 @@ export function BlogEditor({ postId }: { postId?: string }) {
       <div><div className="mb-2 flex flex-wrap items-center gap-1 rounded-xl bg-[#f6f5f1] p-2"><button type="button" className="format-button font-bold" onMouseDown={(event) => event.preventDefault()} onClick={() => { editor.current?.focus(); document.execCommand("bold"); }}>B</button><button type="button" className="format-button font-serif italic" onMouseDown={(event) => event.preventDefault()} onClick={() => { editor.current?.focus(); document.execCommand("italic"); }}>I</button><span className="mx-1 h-6 w-px bg-black/10" /><button type="button" className="format-button" onClick={() => insertMarkup("<h2>Section heading</h2><p><br></p>")}>H2</button><button type="button" className="format-button" onMouseDown={saveEditorSelection} onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = () => { if (input.files) void insertFiles(input.files); }; input.click(); }}>＋ Image</button><label className="ml-2 flex items-center gap-2 text-[11px] text-zinc-500">Selected image width <input type="range" min="25" max="100" step="5" value={bodyImageScale} onChange={(event) => { const width = Number(event.target.value); setBodyImageScale(width); if (selectedImage.current) { selectedImage.current.style.maxWidth = `${width}%`; selectedImage.current.dataset.imageWidth = String(width); } }} className="w-20 accent-[#a9664c]" /><span className="w-8 tabular-nums">{bodyImageScale}%</span></label><span className="ml-auto hidden text-[11px] text-zinc-400 sm:block">Click an image to select it · text wraps beside images</span></div><div ref={editor} contentEditable suppressContentEditableWarning role="textbox" aria-label="Blog body" aria-multiline="true" data-placeholder="Start writing your story…" className="editor-content rounded-xl border border-black/5 px-4 py-5 text-[15px] leading-8 text-zinc-700" onClick={(event) => { const image = (event.target as HTMLElement).closest("img"); selectedImage.current = image instanceof HTMLImageElement ? image : null; if (selectedImage.current) setBodyImageScale(Number.parseInt(selectedImage.current.dataset.imageWidth ?? selectedImage.current.style.maxWidth, 10) || 48); }} onPointerDown={startImageMove} onPointerMove={trackImageMove} onPointerUp={finishImageMove} onPointerCancel={cancelImageMove} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }} onDrop={(event) => { event.preventDefault(); const range = document.caretRangeFromPoint?.(event.clientX, event.clientY); if (range) { const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range); savedRange.current = range.cloneRange(); } void insertFiles(event.dataTransfer.files); }} /></div>
 
       <label className="block"><span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">Hashtags</span><input value={tagsText} onChange={(event) => setTagsText(event.target.value)} placeholder="mindfulness, writing, travel" className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-[#bf8263]" /><span className="mt-2 block text-xs text-zinc-400">Separate topics with commas. We&apos;ll add the # for you.</span></label>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/5 pt-5"><p className="text-xs text-zinc-500">Published as <strong className="font-medium text-zinc-700">{currentUser.name}</strong></p><div className="flex gap-2"><Link href={postId ? `/blogs/${postId}` : "/blogs"} className="rounded-full px-4 py-2.5 text-sm text-zinc-500 hover:bg-[#f5f4ef]">Cancel</Link><button type="button" onClick={publish} className="rounded-full bg-[#30342e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#484c45]">Save changes &amp; publish</button></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/5 pt-5"><p className="text-xs text-zinc-500">Published as <strong className="font-medium text-zinc-700">{currentUser.name}</strong></p><div className="flex gap-2"><Link href={postId ? `/blogs/${postId}` : "/blogs"} className="rounded-full px-4 py-2.5 text-sm text-zinc-500 hover:bg-[#f5f4ef]">Cancel</Link><button type="button" disabled={publishing} onClick={publish} className="rounded-full bg-[#30342e] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#484c45] disabled:cursor-not-allowed disabled:opacity-60">{publishing ? "Publishing…" : "Save changes & publish"}</button></div></div>
       {notice && <p role="status" className="text-sm text-[#a9664c]">{notice}</p>}
     </div>
     <p className="mt-4 text-center text-xs text-zinc-400">Demo content is saved only in this browser. Clearing site data removes your edits.</p>

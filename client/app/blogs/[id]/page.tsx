@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BlogShell } from "../BlogShell";
 import { deleteOwnedPost, demoPosts, readCurrentUser, readPosts, writePosts, recordVisit, type BlogPost, type CurrentUser } from "../data";
 import { UserAvatar } from "../UserAvatar";
@@ -14,6 +14,7 @@ function BlogDetailContent() {
   const router = useRouter();
   const [posts, setPosts] = useState<BlogPost[]>(demoPosts);
   const [liked, setLiked] = useState(false);
+  const likedRef = useRef(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
@@ -21,7 +22,11 @@ function BlogDetailContent() {
       const user = readCurrentUser();
       setCurrentUser(user);
       const stored = readPosts(); setPosts(stored);
-      try { setLiked(JSON.parse(window.localStorage.getItem(`blog.likes.${user?.id ?? "guest"}.v1`) ?? "[]").includes(id)); } catch { setLiked(false); }
+      try {
+        const isLiked = (JSON.parse(window.localStorage.getItem(`blog.likes.${user?.id ?? "guest"}.v1`) ?? "[]") as string[]).includes(id);
+        likedRef.current = isLiked;
+        setLiked(isLiked);
+      } catch { likedRef.current = false; setLiked(false); }
       const viewed = stored.find((post) => post.id === id);
       if (viewed) recordVisit(viewed);
     }, 0);
@@ -46,12 +51,18 @@ function BlogDetailContent() {
   };
 
   const toggleLike = () => {
-    const nextLiked = !liked; setLiked(nextLiked);
+    const nextLiked = !likedRef.current;
+    likedRef.current = nextLiked;
+    setLiked(nextLiked);
     const likesKey = `blog.likes.${currentUser?.id ?? "guest"}.v1`;
-    const counts = JSON.parse(window.localStorage.getItem(likesKey) ?? "[]") as string[];
-    const nextCounts = nextLiked ? [...counts, id] : counts.filter((likedId) => likedId !== id);
+    let counts: string[] = [];
+    try { counts = JSON.parse(window.localStorage.getItem(likesKey) ?? "[]") as string[]; } catch { /* Start with an empty like list if local data is damaged. */ }
+    const nextCounts = nextLiked ? Array.from(new Set([...counts, id])) : counts.filter((likedId) => likedId !== id);
     window.localStorage.setItem(likesKey, JSON.stringify(nextCounts));
-    updatePost({ ...post, likes: Math.max(0, post.likes + (nextLiked ? 1 : -1)) });
+    const latestPost = readPosts().find((item) => item.id === id) ?? post;
+    const nextPosts = readPosts().map((item) => item.id === id ? { ...item, likes: Math.max(0, latestPost.likes + (nextLiked ? 1 : -1)) } : item);
+    setPosts(nextPosts);
+    writePosts(nextPosts);
   };
 
   const isAuthor = Boolean(currentUser && currentUser.id === post.ownerId);

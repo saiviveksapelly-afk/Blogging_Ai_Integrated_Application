@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 type RegisterResponse = {
@@ -13,9 +13,16 @@ type RegisterResponse = {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  function clearRegisterForm() {
+    formRef.current?.reset();
+    setMessage("");
+    setIsSuccess(false);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,7 +68,8 @@ export default function RegisterPage() {
 
       setIsSuccess(true);
       setMessage("Registration successful. You can now log in.");
-       window.setTimeout(() => {
+      formRef.current?.reset();
+      window.setTimeout(() => {
         router.push("/login");
       }, 1200);
     } catch {
@@ -83,7 +91,7 @@ export default function RegisterPage() {
           Join the community and start reading blogs.
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form ref={formRef} className="mt-6 space-y-4" onSubmit={handleSubmit} autoComplete="off">
           <div>
             <label
               className="mb-1 block text-sm font-medium text-zinc-700"
@@ -172,6 +180,7 @@ export default function RegisterPage() {
           <Link
             className="font-medium text-zinc-900 underline underline-offset-4"
             href="/login"
+            onClick={clearRegisterForm}
           >
             Log in
           </Link>

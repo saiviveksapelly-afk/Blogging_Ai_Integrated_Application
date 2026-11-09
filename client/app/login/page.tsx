@@ -22,6 +22,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function clearLoginForm() {
+    setEmail("");
+    setPassword("");
+    setMessage("");
+    setIsSuccess(false);
+  }
+
   function handleDemoLogin() {
     setEmail("demo@example.com");
     setPassword(readDemoPassword());
@@ -48,6 +55,8 @@ export default function LoginPage() {
     ) {
       const savedDemoUser = readCurrentUser();
       saveCurrentUser(savedDemoUser?.id === DEMO_USER_ID ? savedDemoUser : { id: DEMO_USER_ID, name: "Demo reader", email: "demo@example.com" });
+      setIsSubmitting(false);
+      clearLoginForm();
       router.replace("/blogs");
       return;
     }
@@ -85,6 +94,8 @@ export default function LoginPage() {
 
       saveCurrentUser({ id: data.user.id, name: data.user.username, email: data.user.email, avatarURL: data.user.avatarURL });
 
+      setIsSubmitting(false);
+      clearLoginForm();
       router.replace("/blogs");
     } catch {
       setMessage(
@@ -166,6 +177,7 @@ export default function LoginPage() {
           <Link
             className="font-medium text-zinc-900 underline underline-offset-4"
             href="/register"
+            onClick={clearLoginForm}
           >
             Register
           </Link>

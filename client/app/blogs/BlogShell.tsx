@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { CURRENT_USER_STORAGE_KEY, DEMO_PASSWORD_STORAGE_KEY, DEMO_USER_ID, HISTORY_STORAGE_KEY, readCurrentUser, readPosts, writePosts, type CurrentUser } from "./data";
 import { UserAvatar } from "./UserAvatar";
+import { useRequireAuth } from "./useRequireAuth";
 
 function Icon({ name }: { name: "menu" | "plus" | "clock" | "close" | "search" | "home" | "book" }) {
   const common = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true as const };
@@ -21,6 +22,7 @@ function Icon({ name }: { name: "menu" | "plus" | "clock" | "close" | "search" |
 
 export function BlogShell({ children, onSearch, searchValue = "" }: { children: ReactNode; onSearch?: (value: string) => void; searchValue?: string }) {
   const router = useRouter();
+  const authorized = useRequireAuth();
   const [expanded, setExpanded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState("");
@@ -104,6 +106,8 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
     setHistoryOpen(!historyOpen);
   }
 
+  if (!authorized) return <main className="min-h-screen bg-[#f7f6f2] px-5 py-20 text-center text-sm text-zinc-500">Redirecting to login…</main>;
+
   return (
     <div className="min-h-screen bg-[#f7f6f2] text-[#24241f]">
       <aside className={`blog-sidebar ${expanded ? "blog-sidebar-expanded" : ""}`}>
@@ -120,7 +124,9 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
         </nav>
         <div className="mt-auto border-t border-black/5 p-3" ref={accountRef}>
           <div className="flex min-h-12 items-center gap-3 px-1">
-            <UserAvatar name={currentUser?.name ?? "Reader"} avatarURL={currentUser?.avatarURL} className="h-10 w-10" />
+            <button type="button" title="Account options" aria-label="Open account options" aria-haspopup="menu" aria-expanded={accountOpen} onClick={() => setAccountOpen(!accountOpen)} className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a9664c]">
+              <UserAvatar name={currentUser?.name ?? "Reader"} avatarURL={currentUser?.avatarURL} className="h-10 w-10" />
+            </button>
             {expanded && <button type="button" title="View account options" aria-expanded={accountOpen} onClick={() => setAccountOpen(!accountOpen)} className="min-w-0 flex-1 truncate rounded-lg py-2 text-left text-sm hover:bg-[#efeee8]">{currentUser?.name ?? "Account"}</button>}
           </div>
           {accountOpen && <div className={`account-popover ${expanded ? "account-popover-expanded" : ""}`} role="menu">
