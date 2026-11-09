@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BlogShell } from "./BlogShell";
-import { demoPosts, readCurrentUser, type BlogPost, type CurrentUser } from "./data";
+import { readCurrentUser, type BlogPost, type CurrentUser } from "./data";
 import { getPosts } from "./api";
 
 function HighlightedText({ text, term }: { text: string; term: string }) {
@@ -17,7 +17,9 @@ function HighlightedText({ text, term }: { text: string; term: string }) {
 
 export default function ExplorePage() {
   const router = useRouter();
-  const [posts, setPosts] = useState<BlogPost[]>(demoPosts);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState("");
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState("");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -25,7 +27,14 @@ export default function ExplorePage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setCurrentUser(readCurrentUser());
-      void getPosts().then(setPosts).catch(() => setPosts(demoPosts));
+      void getPosts().then((loadedPosts) => {
+        setPosts(loadedPosts);
+        setPostsError("");
+        setPostsLoading(false);
+      }).catch((error) => {
+        setPostsError(error instanceof Error ? error.message : "The blog service could not be reached.");
+        setPostsLoading(false);
+      });
       const tag = new URLSearchParams(window.location.search).get("tag");
       if (tag) setActiveTag(tag);
       const initialQuery = new URLSearchParams(window.location.search).get("q");
@@ -45,6 +54,17 @@ export default function ExplorePage() {
   function clearFilters() {
     setQuery(""); setActiveTag(""); router.replace("/blogs");
   }
+
+  function retryLoadingPosts() {
+    setPostsLoading(true); setPostsError("");
+    void getPosts().then((loadedPosts) => { setPosts(loadedPosts); setPostsLoading(false); }).catch((error) => {
+      setPostsError(error instanceof Error ? error.message : "The blog service could not be reached.");
+      setPostsLoading(false);
+    });
+  }
+
+  if (postsLoading) return <BlogShell><section role="status" className="mx-auto max-w-5xl animate-pulse rounded-3xl bg-white p-10 text-center text-sm text-zinc-500">Loading blogs from the server…</section></BlogShell>;
+  if (postsError) return <BlogShell><section role="alert" className="mx-auto max-w-xl rounded-3xl bg-white p-8 text-center shadow-sm"><h1 className="font-serif text-2xl">Could not load your blogs</h1><p className="mt-3 text-sm text-zinc-500">The server returned an error: {postsError}. Your saved posts have not been replaced with demo content.</p><button type="button" onClick={retryLoadingPosts} className="mt-5 rounded-full bg-[#30342e] px-5 py-2.5 text-sm font-medium text-white">Try again</button></section></BlogShell>;
 
   return (
     <BlogShell onSearch={setQuery} searchValue={query}>
