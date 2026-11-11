@@ -1,8 +1,10 @@
 import { LEGACY_HISTORY_STORAGE_KEY, LEGACY_POSTS_STORAGE_KEY, type BlogPost } from "./data";
+import { waitForBackend } from "../apiAvailability";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000").replace(/\/$/, "");
 
 export async function blogApi<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+  await waitForBackend();
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const response = await fetch(`${API_URL}/api/blogs${path}`, {
@@ -34,6 +36,7 @@ export const recordPostVisit = (id: string) => blogApi(`/history/${encodeURIComp
 
 export type WritingSuggestion = { field: "title" | "body"; original: string; suggested: string; explanation: string };
 export async function requestWritingSuggestions(title: string, body: string) {
+  await waitForBackend();
   const response = await fetch(`${API_URL}/api/ai/suggestions`, {
     method: "POST", credentials: "include", cache: "no-store",
     headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title, body }),

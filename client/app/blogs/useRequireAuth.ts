@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CURRENT_USER_STORAGE_KEY, readCurrentUser } from "./data";
 import { migrateLegacyBrowserData } from "./api";
+import { waitForBackend } from "../apiAvailability";
 
-type AuthState = "checking" | "authorized" | "redirecting";
+type AuthState = "checking" | "authorized" | "redirecting" | "unavailable";
 let verifiedSession: { userId: string; expiresAt: number } | null = null;
 const SESSION_CACHE_MS = 2 * 60 * 1000;
 
@@ -36,6 +37,7 @@ export function useRequireAuth() {
       }
       if (active && id === requestId) setAuthState("checking");
       try {
+        await waitForBackend();
         const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
         const response = await fetch(`${apiUrl}/api/auth/me`, { credentials: "include", cache: "no-store" });
         const payload = await response.json().catch(() => ({}));
@@ -54,10 +56,9 @@ export function useRequireAuth() {
         }
       } catch {
         if (!active || id !== requestId) return;
-        // Preserve the signed-in shell during a brief backend outage. Protected
-        // writes still require a valid backend session and report their own errors.
+        // A sleeping/unreachable backend is not proof that the user's session is invalid.
         if (verifiedSession?.userId === localUser.id && verifiedSession.expiresAt > Date.now()) setAuthState("authorized");
-        else { setAuthState("redirecting"); router.replace("/login"); }
+        else setAuthState("unavailable");
       }
     };
 

@@ -3,6 +3,7 @@
 import { FormEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BackendWakeError, waitForBackend } from "../apiAvailability";
 type RegisterResponse = {
   message?: string;
   errors?: Array<{
@@ -41,6 +42,7 @@ export default function RegisterPage() {
     };
 
     try {
+      await waitForBackend(() => setMessage("The server is starting. Please keep this page open…"));
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -72,10 +74,8 @@ export default function RegisterPage() {
       window.setTimeout(() => {
         router.push("/login");
       }, 1200);
-    } catch {
-      setMessage(
-        "Could not connect to the server. Check that the backend is running.",
-      );
+    } catch (error) {
+      setMessage(error instanceof BackendWakeError ? error.message : "Could not connect to the server. Check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }

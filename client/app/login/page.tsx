@@ -5,6 +5,7 @@ import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DEMO_USER_ID, readCurrentUser, readDemoPassword, saveCurrentUser } from "../blogs/data";
+import { BackendWakeError, waitForBackend } from "../apiAvailability";
 
 type LoginResponse = {
   message?: string;
@@ -54,6 +55,7 @@ export default function LoginPage() {
       payload.password === readDemoPassword()
     ) {
       try {
+        await waitForBackend(() => setMessage("The server is starting. Please keep this page open…"));
         const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
         const response = await fetch(`${apiUrl}/api/auth/demo`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(payload) });
         const data = (await response.json()) as LoginResponse;
@@ -62,8 +64,8 @@ export default function LoginPage() {
         saveCurrentUser({ id: DEMO_USER_ID, name: data.user.username, email: data.user.email, avatarURL: savedDemoUser?.id === DEMO_USER_ID ? savedDemoUser.avatarURL : undefined });
         clearLoginForm();
         router.replace("/blogs");
-      } catch {
-        setMessage("Could not connect to the server. Check that the backend is running.");
+      } catch (error) {
+        setMessage(error instanceof BackendWakeError ? error.message : "Could not connect to the server. Please try again later.");
       } finally {
         setIsSubmitting(false);
       }
@@ -71,6 +73,7 @@ export default function LoginPage() {
     }
 
     try {
+      await waitForBackend(() => setMessage("The server is starting. Please keep this page open…"));
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
@@ -106,10 +109,8 @@ export default function LoginPage() {
       setIsSubmitting(false);
       clearLoginForm();
       router.replace("/blogs");
-    } catch {
-      setMessage(
-        "Could not complete login. Check your connection and try again.",
-      );
+    } catch (error) {
+      setMessage(error instanceof BackendWakeError ? error.message : "Could not complete login. Check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }

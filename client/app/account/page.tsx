@@ -128,7 +128,7 @@ export default function AccountPage() {
     } finally { setSavingPassword(false); }
   }
 
-  if (authState !== "authorized") return <AuthTransition />;
+  if (authState !== "authorized") return <AuthTransition unavailable={authState === "unavailable"} />;
   if (!identityLoaded) return <main className="grid min-h-screen place-items-center bg-[#f7f6f2] text-sm text-zinc-500">Loading account…</main>;
   if (!user) return <main className="grid min-h-screen place-items-center bg-[#f7f6f2] px-5"><section className="max-w-md rounded-3xl bg-white p-8 text-center"><h1 className="font-serif text-3xl">Log in to your account</h1><p className="mt-3 text-sm text-zinc-500">Your account settings are private to you.</p><Link href="/login" className="mt-6 inline-flex rounded-full bg-[#30342e] px-5 py-3 text-sm text-white">Go to login</Link></section></main>;
 

@@ -95,7 +95,7 @@ export function BlogShell({ children, onSearch, searchValue = "" }: { children: 
     setHistoryOpen(!historyOpen);
   }
 
-  if (authState !== "authorized") return <AuthTransition />;
+  if (authState !== "authorized") return <AuthTransition unavailable={authState === "unavailable"} />;
 
   return (
     <div className="min-h-screen bg-[#f7f6f2] text-[#24241f]">
